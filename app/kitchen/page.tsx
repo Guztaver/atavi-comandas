@@ -3,20 +3,13 @@
 import { useState, useEffect } from 'react';
 import { Order } from '@/types';
 import { StorageService } from '@/lib/storage';
-import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'next/navigation';
+import KitchenDeliveryLayout from '@/components/KitchenDeliveryLayout';
 
 export default function Kitchen() {
-  const { isAuthenticated } = useAuth();
-  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState<'all' | 'pending' | 'preparing' | 'ready'>('all');
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login');
-    }
-  }, [isAuthenticated, router]);
+
 
   useEffect(() => {
     const loadOrders = () => {
@@ -114,18 +107,8 @@ export default function Kitchen() {
     }
   }, []);
 
-  if (!isAuthenticated) {
-    return <div>Carregando...</div>;
-  }
-
   return (
-    <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Cozinha</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Gestão de pedidos e preparação
-        </p>
-      </div>
+    <KitchenDeliveryLayout title="Cozinha" backTo="/dashboard" backLabel="Dashboard">
 
       {/* Filtros */}
       <div className="mb-6">
@@ -289,6 +272,6 @@ export default function Kitchen() {
           ))}
         </div>
       )}
-    </div>
+    </KitchenDeliveryLayout>
   );
 }
