@@ -5,9 +5,14 @@ import { Order } from '@/types';
 import { StorageService } from '@/lib/storage';
 import Link from 'next/link';
 import SyncStatus from '@/components/ui/SyncStatus';
+import { KitchenTicket } from '@/components/receipts/KitchenTicket';
+import { CustomerReceipt } from '@/components/receipts/CustomerReceipt';
+import { usePrinter } from '@/hooks/usePrinter';
+import { filterOrdersByPeriod, getPeriodLabel, StatisticsPeriod } from '@/lib/date-utils';
 
 export default function Dashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
@@ -15,21 +20,16 @@ export default function Dashboard() {
     ready: 0,
     delivered: 0
   });
+  const [selectedPeriod, setSelectedPeriod] = useState<StatisticsPeriod>('daily');
+  const { printReceipt, status: printerStatus, connect, disconnect } = usePrinter();
 
   useEffect(() => {
     const loadOrders = () => {
       const allOrders = StorageService.getOrders();
+      const period = StorageService.getStatisticsPeriod();
+      setSelectedPeriod(period);
+
       setOrders(allOrders);
-
-      const newStats = {
-        total: allOrders.length,
-        pending: allOrders.filter(o => o.status === 'pending').length,
-        preparing: allOrders.filter(o => o.status === 'preparing').length,
-        ready: allOrders.filter(o => o.status === 'ready').length,
-        delivered: allOrders.filter(o => o.status === 'delivered').length
-      };
-
-      setStats(newStats);
     };
 
     loadOrders();
@@ -38,6 +38,27 @@ export default function Dashboard() {
     const interval = setInterval(loadOrders, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  // Update filtered orders and stats when orders or period changes
+  useEffect(() => {
+    const filtered = filterOrdersByPeriod(orders, selectedPeriod);
+    setFilteredOrders(filtered);
+
+    const newStats = {
+      total: filtered.length,
+      pending: filtered.filter(o => o.status === 'pending').length,
+      preparing: filtered.filter(o => o.status === 'preparing').length,
+      ready: filtered.filter(o => o.status === 'ready').length,
+      delivered: filtered.filter(o => o.status === 'delivered').length
+    };
+
+    setStats(newStats);
+  }, [orders, selectedPeriod]);
+
+  const handlePeriodChange = (period: StatisticsPeriod) => {
+    setSelectedPeriod(period);
+    StorageService.saveStatisticsPeriod(period);
+  };
 
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
@@ -79,6 +100,42 @@ export default function Dashboard() {
     return new Date(date).toLocaleDateString('pt-BR');
   };
 
+  const printKitchenTicket = async (order: Order) => {
+    if (!printerStatus.connected) {
+      alert('Por favor, conecte a impressora primeiro');
+      return;
+    }
+
+    try {
+      await printReceipt(
+        <KitchenTicket order={order} />,
+        'kitchen-ticket',
+        order.id
+      );
+    } catch (error) {
+      console.error('Failed to print kitchen ticket:', error);
+      alert('Erro ao imprimir comanda da cozinha');
+    }
+  };
+
+  const printCustomerReceipt = async (order: Order) => {
+    if (!printerStatus.connected) {
+      alert('Por favor, conecte a impressora primeiro');
+      return;
+    }
+
+    try {
+      await printReceipt(
+        <CustomerReceipt order={order} />,
+        'customer-receipt',
+        order.id
+      );
+    } catch (error) {
+      console.error('Failed to print customer receipt:', error);
+      alert('Erro ao imprimir recibo do cliente');
+    }
+  };
+
   return (
     <div className="px-4 sm:px-6 lg:px-8">
       <div className="mb-8">
@@ -86,6 +143,58 @@ export default function Dashboard() {
         <p className="mt-1 text-sm text-gray-600">
           Visão geral dos pedidos do dia
         </p>
+      </div>
+
+      {/* Printer Status */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm">
+            <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${
+              printerStatus.connected
+                ? 'bg-green-100 text-green-800 border border-green-200'
+                : 'bg-red-100 text-red-800 border border-red-200'
+            }`}>
+              <div className={`w-2 h-2 rounded-full ${
+                printerStatus.connected ? 'bg-green-500' : 'bg-red-500'
+              }`} />
+              <span className="font-medium">
+                Impressora {printerStatus.connected ? 'Conectada' : 'Desconectada'}
+              </span>
+            </div>
+            {!printerStatus.connected && (
+              <button
+                onClick={connect}
+                className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+              >
+                Conectar
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Period Selector */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Estatísticas {getPeriodLabel(selectedPeriod).toLowerCase()}</h2>
+            <p className="text-sm text-gray-600">
+              Visualize os dados do período selecionado
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">Período:</label>
+            <select
+              value={selectedPeriod}
+              onChange={(e) => handlePeriodChange(e.target.value as StatisticsPeriod)}
+              className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+            >
+              <option value="daily">Diário</option>
+              <option value="weekly">Semanal</option>
+              <option value="monthly">Mensal</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* Estatísticas */}
@@ -101,7 +210,7 @@ export default function Dashboard() {
               <div className="ml-5 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">
-                    Total Hoje
+                    Total {getPeriodLabel(selectedPeriod)}
                   </dt>
                   <dd className="text-lg font-medium text-gray-900">
                     {stats.total}
@@ -246,6 +355,15 @@ export default function Dashboard() {
                 </svg>
                 Delivery
               </Link>
+              <Link
+                href="/dashboard/printer"
+                className="inline-flex items-center justify-center px-4 py-3 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                Impressora
+              </Link>
             </div>
           </div>
         </div>
@@ -255,10 +373,10 @@ export default function Dashboard() {
       <div className="bg-white shadow rounded-lg">
         <div className="px-4 py-5 sm:p-6">
           <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-            Pedidos Recentes
+            Pedidos Recentes {getPeriodLabel(selectedPeriod).toLowerCase()}
           </h3>
 
-          {orders.length === 0 ? (
+          {filteredOrders.length === 0 ? (
             <div className="text-center py-12">
               <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -280,7 +398,7 @@ export default function Dashboard() {
               </div>
             </div>
           ) : (
-            <div className="overflow-hidden">
+            <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
@@ -302,10 +420,13 @@ export default function Dashboard() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Horário
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Ações
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {orders.slice(0, 10).map((order) => (
+                  {filteredOrders.slice(0, 10).map((order) => (
                     <tr key={order.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         #{order.id.slice(-6)}
@@ -326,6 +447,38 @@ export default function Dashboard() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {formatTime(order.createdAt)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => printKitchenTicket(order)}
+                            disabled={!printerStatus.connected}
+                            className={`inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded ${
+                              printerStatus.connected
+                                ? 'text-blue-700 bg-blue-100 hover:bg-blue-200'
+                                : 'text-gray-400 bg-gray-100 cursor-not-allowed'
+                            }`}
+                            title="Imprimir comanda da cozinha"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => printCustomerReceipt(order)}
+                            disabled={!printerStatus.connected}
+                            className={`inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded ${
+                              printerStatus.connected
+                                ? 'text-green-700 bg-green-100 hover:bg-green-200'
+                                : 'text-gray-400 bg-gray-100 cursor-not-allowed'
+                            }`}
+                            title="Imprimir recibo do cliente"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

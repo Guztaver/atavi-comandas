@@ -42,6 +42,13 @@ export interface OrderStatus {
   deliveryStatus?: 'pending' | 'ready' | 'delivering' | 'delivered';
 }
 
+export interface AppSettings {
+  sound: boolean;
+  vibration: boolean;
+  desktop: boolean;
+  statisticsPeriod: 'daily' | 'weekly' | 'monthly';
+}
+
 export interface NotificationSettings {
   sound: boolean;
   vibration: boolean;

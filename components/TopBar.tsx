@@ -1,14 +1,40 @@
 'use client';
 
-import { useAuth } from '@/hooks/useAuth';
-import { useEffect, ReactNode, useState } from 'react';
-import { NotificationService } from '@/lib/notifications';
-import { SyncService } from '@/lib/sync';
+import { ReactNode, useState, useEffect } from 'react';
+import { usePrinter } from '@/hooks/usePrinter';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
-export default function DashboardLayout({ children }: { children: ReactNode }) {
-  const { isAuthenticated, isLoading, logout } = useAuth();
+interface TopBarProps {
+  title: string;
+  subtitle?: string;
+  children?: ReactNode;
+  showPrinterStatus?: boolean;
+  actions?: ReactNode;
+  statistics?: {
+    label: string;
+    value: number | string;
+    color?: string;
+  }[];
+  showBackButton?: boolean;
+  backTo?: string;
+  backLabel?: string;
+}
+
+export function TopBar({ 
+  title, 
+  subtitle, 
+  children, 
+  showPrinterStatus = true,
+  actions,
+  statistics,
+  showBackButton = false,
+  backTo,
+  backLabel
+}: TopBarProps) {
+  const { status: printerStatus, connect, disconnect } = usePrinter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
 
   // Prevent body scroll when mobile menu is open
   useEffect(() => {
@@ -23,36 +49,45 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     };
   }, [isMobileMenuOpen]);
 
-  // Inicializar serviços quando autenticado
-  useEffect(() => {
-    if (isAuthenticated) {
-      // Inicializar notificações e sincronização
-      NotificationService.init();
-      SyncService.setupAutoSync();
+  const handleBackClick = () => {
+    if (backTo) {
+      window.location.href = backTo;
+    } else {
+      window.location.href = '/dashboard';
     }
-  }, [isAuthenticated]);
-
-  if (isLoading || !isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-red-500 rounded-full mb-4">
-            <svg className="w-8 h-8 text-white animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-          </div>
-          <p className="text-gray-600">Carregando...</p>
-        </div>
-      </div>
-    );
-  }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
+      {/* Navigation Header */}
       <nav className="bg-white shadow-sm border-b border-gray-200 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
+              {/* Back Button (optional) */}
+              {showBackButton && (
+                <button
+                  onClick={handleBackClick}
+                  className="flex items-center text-gray-600 hover:text-gray-900 transition-colors duration-150 group mr-4"
+                >
+                  <svg
+                    className="w-5 h-5 transition-transform duration-150 group-hover:-translate-x-1"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 19l-7-7 7-7"
+                    />
+                  </svg>
+                  <span className="text-sm font-medium ml-1">{backLabel || 'Dashboard'}</span>
+                </button>
+              )}
+
+              {/* App Logo */}
               <div className="flex items-center">
                 <div className="flex-shrink-0">
                   <div className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
@@ -71,7 +106,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <div className="hidden md:flex items-center space-x-1">
               <Link
                 href="/dashboard"
-                className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors duration-150 group"
+                className={`p-2 rounded-lg transition-colors duration-150 group ${
+                  pathname === '/dashboard' 
+                    ? 'bg-red-50 text-red-600' 
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
                 title="Dashboard"
               >
                 <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-150" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -80,7 +119,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               </Link>
               <Link
                 href="/dashboard/menu"
-                className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors duration-150 group"
+                className={`p-2 rounded-lg transition-colors duration-150 group ${
+                  pathname === '/dashboard/menu' 
+                    ? 'bg-red-50 text-red-600' 
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
                 title="Cardápio"
               >
                 <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-150" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -89,7 +132,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               </Link>
               <Link
                 href="/kitchen"
-                className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors duration-150 group"
+                className={`p-2 rounded-lg transition-colors duration-150 group ${
+                  pathname === '/kitchen' 
+                    ? 'bg-red-50 text-red-600' 
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
                 title="Cozinha"
               >
                 <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-150" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -98,7 +145,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               </Link>
               <Link
                 href="/delivery"
-                className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors duration-150 group"
+                className={`p-2 rounded-lg transition-colors duration-150 group ${
+                  pathname === '/delivery' 
+                    ? 'bg-red-50 text-red-600' 
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
                 title="Delivery"
               >
                 <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-150" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -107,7 +158,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               </Link>
               <Link
                 href="/dashboard/orders"
-                className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors duration-150 group"
+                className={`p-2 rounded-lg transition-colors duration-150 group ${
+                  pathname === '/dashboard/orders' 
+                    ? 'bg-red-50 text-red-600' 
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
                 title="Pedidos"
               >
                 <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-150" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -116,7 +171,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               </Link>
               <Link
                 href="/dashboard/settings"
-                className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors duration-150 group"
+                className={`p-2 rounded-lg transition-colors duration-150 group ${
+                  pathname === '/dashboard/settings' 
+                    ? 'bg-red-50 text-red-600' 
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
                 title="Configurações"
               >
                 <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-150" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -124,9 +183,42 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
               </Link>
+              
               <div className="w-px h-6 bg-gray-300 mx-1" />
+              
+              {/* Printer Status */}
+              {showPrinterStatus && (
+                <div className="flex items-center gap-2 text-sm">
+                  <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${
+                    printerStatus.connected
+                      ? 'bg-green-100 text-green-800 border border-green-200'
+                      : 'bg-red-100 text-red-800 border border-red-200'
+                  }`}>
+                    <div className={`w-2 h-2 rounded-full ${
+                      printerStatus.connected ? 'bg-green-500' : 'bg-red-500'
+                    }`} />
+                    <span className="font-medium">
+                      Impressora {printerStatus.connected ? 'Conectada' : 'Desconectada'}
+                    </span>
+                  </div>
+                  {!printerStatus.connected && (
+                    <button
+                      onClick={connect}
+                      className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                    >
+                      Conectar
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Logout Button */}
               <button
-                onClick={logout}
+                onClick={() => {
+                  // Clear auth and redirect to login
+                  localStorage.removeItem('atavi-auth');
+                  window.location.href = '/login';
+                }}
                 className="p-2 rounded-lg text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors duration-150 group"
                 title="Sair"
               >
@@ -207,6 +299,25 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               
               {/* Menu items */}
               <div className="py-2">
+                {showBackButton && (
+                  <>
+                    <div className="px-4 py-2">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Navegação</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        handleBackClick();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="flex items-center px-4 py-3 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors duration-150 group"
+                    >
+                      <svg className="w-5 h-5 mr-3 text-gray-400 group-hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                      {backLabel || 'Dashboard'}
+                    </button>
+                  </>
+                )}
                 <div className="px-4 py-2">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Navegação</p>
                 </div>
@@ -283,7 +394,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 </div>
                 <button
                   onClick={() => {
-                    logout();
+                    localStorage.removeItem('atavi-auth');
+                    window.location.href = '/login';
                     setIsMobileMenuOpen(false);
                   }}
                   className="flex items-center w-full px-4 py-3 text-base font-medium text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors duration-150 group"
@@ -299,9 +411,44 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         )}
       </nav>
 
+      {/* Page Content */}
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        {children}
+        {/* Page Title and Subtitle */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+              {subtitle && (
+                <p className="mt-1 text-sm text-gray-600">{subtitle}</p>
+              )}
+            </div>
+            
+            <div className="flex items-center gap-4">
+              {actions}
+            </div>
+          </div>
+        </div>
+
+        {/* Statistics */}
+        {statistics && statistics.length > 0 && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+            {statistics.map((stat, index) => (
+              <div key={index} className="bg-white p-4 rounded-lg shadow">
+                <div className={`text-2xl font-bold ${stat.color || 'text-gray-900'}`}>
+                  {stat.value}
+                </div>
+                <div className="text-sm text-gray-600">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        )}
+        
+        {children && (
+          <div>
+            {children}
+          </div>
+        )}
       </main>
-    </div>
+    </>
   );
 }

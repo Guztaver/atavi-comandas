@@ -1,4 +1,4 @@
-import { Order, MenuItem } from '@/types';
+import { Order, MenuItem, AppSettings } from '@/types';
 
 const STORAGE_KEYS = {
   ORDERS: 'atavi-orders',
@@ -97,14 +97,36 @@ export class StorageService {
   }
 
   // Settings
-  static getSettings(): { sound: boolean; vibration: boolean } {
-    if (typeof window === 'undefined') return { sound: true, vibration: true };
+  static getSettings(): AppSettings {
+    if (typeof window === 'undefined') return {
+      sound: true,
+      vibration: true,
+      desktop: false,
+      statisticsPeriod: 'daily'
+    };
     const data = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-    return data ? JSON.parse(data) : { sound: true, vibration: true };
+    const defaultSettings = {
+      sound: true,
+      vibration: true,
+      desktop: false,
+      statisticsPeriod: 'daily' as const
+    };
+    return data ? { ...defaultSettings, ...JSON.parse(data) } : defaultSettings;
   }
 
-  static saveSettings(settings: { sound: boolean; vibration: boolean }): void {
+  static saveSettings(settings: AppSettings): void {
     if (typeof window === 'undefined') return;
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+  }
+
+  // Statistics Period Management
+  static getStatisticsPeriod(): 'daily' | 'weekly' | 'monthly' {
+    const settings = this.getSettings();
+    return settings.statisticsPeriod || 'daily';
+  }
+
+  static saveStatisticsPeriod(period: 'daily' | 'weekly' | 'monthly'): void {
+    const currentSettings = this.getSettings();
+    this.saveSettings({ ...currentSettings, statisticsPeriod: period });
   }
 }

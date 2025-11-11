@@ -3,11 +3,16 @@
 import { useState, useEffect } from 'react';
 import { Order } from '@/types';
 import { StorageService } from '@/lib/storage';
-import KitchenDeliveryLayout from '@/components/KitchenDeliveryLayout';
+import { CustomerReceipt } from '@/components/receipts/CustomerReceipt';
+import { usePrinter } from '@/hooks/usePrinter';
+import { TopBar } from '@/components/TopBar';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function Delivery() {
+  const { isAuthenticated, isLoading } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState<'all' | 'pending' | 'preparing' | 'ready' | 'delivering' | 'delivered'>('all');
+  const { printReceipt, status: printerStatus } = usePrinter();
 
   useEffect(() => {
     const loadOrders = () => {
@@ -35,6 +40,21 @@ export default function Delivery() {
       // Notificar sonoramente
       const audio = new Audio('/notification.mp3');
       audio.play().catch(() => {}); // Ignorar erro se o arquivo não existir
+
+      // Auto-print customer receipt when order is ready or delivered
+      if ((newStatus === 'ready' || newStatus === 'delivered') && printerStatus.connected) {
+        try {
+          printReceipt(
+            <CustomerReceipt order={updatedOrder} />,
+            'customer-receipt',
+            updatedOrder.id
+          ).catch((error) => {
+            console.error('Failed to print customer receipt:', error);
+          });
+        } catch (error) {
+          console.error('Error creating customer receipt:', error);
+        }
+      }
 
       setOrders(prev => prev.map(o => o.id === orderId ? updatedOrder : o));
     }
@@ -101,222 +121,240 @@ export default function Delivery() {
     return `${hours}h ${minutes}min`;
   };
 
+  if (isLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-red-500 rounded-full mb-4">
+            <svg className="w-8 h-8 text-white animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+          </div>
+          <p className="text-gray-600">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <KitchenDeliveryLayout title="Delivery" backTo="/dashboard" backLabel="Dashboard">
+    <div className="min-h-screen bg-gray-50">
+      <TopBar 
+        title="Delivery" 
+        subtitle="Gerencie as entregas e retiradas"
+        showPrinterStatus={true}
+        showBackButton={true}
+        backTo="/dashboard"
+        backLabel="Dashboard"
+        statistics={[
+          {
+            label: 'Pendentes',
+            value: orders.filter(o => o.status === 'pending').length,
+            color: 'text-gray-900'
+          },
+          {
+            label: 'Preparando',
+            value: orders.filter(o => o.status === 'preparing').length,
+            color: 'text-blue-600'
+          },
+          {
+            label: 'Prontos',
+            value: orders.filter(o => o.status === 'ready').length,
+            color: 'text-green-600'
+          },
+          {
+            label: 'Entregues',
+            value: orders.filter(o => o.status === 'delivered').length,
+            color: 'text-gray-600'
+          }
+        ]}
+      >
 
-      {/* Estatísticas Rápidas */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4 mb-8">
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="text-2xl font-bold text-gray-900">
-            {orders.filter(o => o.status === 'pending').length}
+        {/* Filtros */}
+        <div className="mb-6">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setFilter('all')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                filter === 'all'
+                  ? 'bg-red-600 text-white'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              Todos ({orders.length})
+            </button>
+            <button
+              onClick={() => setFilter('pending')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                filter === 'pending'
+                  ? 'bg-yellow-600 text-white'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              Pendentes ({orders.filter(o => o.status === 'pending').length})
+            </button>
+            <button
+              onClick={() => setFilter('preparing')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                filter === 'preparing'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              Preparando ({orders.filter(o => o.status === 'preparing').length})
+            </button>
+            <button
+              onClick={() => setFilter('ready')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                filter === 'ready'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              Prontos ({orders.filter(o => o.status === 'ready').length})
+            </button>
+            <button
+              onClick={() => setFilter('delivered')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                filter === 'delivered'
+                  ? 'bg-gray-600 text-white'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              Entregues ({orders.filter(o => o.status === 'delivered').length})
+            </button>
           </div>
-          <div className="text-sm text-gray-600">Pendentes</div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="text-2xl font-bold text-blue-600">
-            {orders.filter(o => o.status === 'preparing').length}
+
+        {/* Lista de Pedidos */}
+        {filteredOrders.length === 0 ? (
+          <div className="text-center py-12">
+            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+            </svg>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum pedido de delivery</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              {filter === 'all' ? 'Nenhum pedido de delivery encontrado' : `Nenhum pedido com status "${getStatusText(filter)}"`}
+            </p>
           </div>
-          <div className="text-sm text-gray-600">Preparando</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="text-2xl font-bold text-green-600">
-            {orders.filter(o => o.status === 'ready').length}
-          </div>
-          <div className="text-sm text-gray-600">Prontos</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="text-2xl font-bold text-gray-600">
-            {orders.filter(o => o.status === 'delivered').length}
-          </div>
-          <div className="text-sm text-gray-600">Entregues</div>
-        </div>
-      </div>
-
-      {/* Filtros */}
-      <div className="mb-6">
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setFilter('all')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filter === 'all'
-                ? 'bg-red-600 text-white'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            Todos ({orders.length})
-          </button>
-          <button
-            onClick={() => setFilter('pending')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filter === 'pending'
-                ? 'bg-yellow-600 text-white'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            Pendentes ({orders.filter(o => o.status === 'pending').length})
-          </button>
-          <button
-            onClick={() => setFilter('preparing')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filter === 'preparing'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            Preparando ({orders.filter(o => o.status === 'preparing').length})
-          </button>
-          <button
-            onClick={() => setFilter('ready')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filter === 'ready'
-                ? 'bg-green-600 text-white'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            Prontos ({orders.filter(o => o.status === 'ready').length})
-          </button>
-          <button
-            onClick={() => setFilter('delivered')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filter === 'delivered'
-                ? 'bg-gray-600 text-white'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            Entregues ({orders.filter(o => o.status === 'delivered').length})
-          </button>
-        </div>
-      </div>
-
-      {/* Lista de Pedidos */}
-      {filteredOrders.length === 0 ? (
-        <div className="text-center py-12">
-          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
-          </svg>
-          <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum pedido de delivery</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            {filter === 'all' ? 'Nenhum pedido de delivery encontrado' : `Nenhum pedido com status "${getStatusText(filter)}"`}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {filteredOrders.map((order) => (
-            <div key={order.id} className={`bg-white rounded-lg shadow-md border-2 ${getStatusColor(order.status)}`}>
-              <div className="p-6">
-                {/* Cabeçalho do Pedido */}
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900">
-                      Pedido #{order.id.slice(-6)}
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      {getTypeText(order.type)} • {formatDateTime(order.createdAt)}
-                    </p>
-                  </div>
-                  <span className="px-3 py-1 text-xs font-semibold rounded-full bg-white bg-opacity-70">
-                    {getStatusText(order.status)}
-                  </span>
-                </div>
-
-                {/* Informações do Cliente */}
-                <div className="mb-4 p-4 bg-white bg-opacity-50 rounded-lg">
-                  {order.customerName && (
-                    <p className="text-sm font-medium text-gray-900 mb-1">
-                      <strong>Cliente:</strong> {order.customerName}
-                    </p>
-                  )}
-                  {order.customerPhone && (
-                    <p className="text-sm text-gray-700 mb-1">
-                      <strong>Telefone:</strong> {order.customerPhone}
-                    </p>
-                  )}
-                  {order.customerAddress && order.type === 'delivery' && (
-                    <p className="text-sm text-gray-700">
-                      <strong>Endereço:</strong> {order.customerAddress}
-                    </p>
-                  )}
-                </div>
-
-                {/* Itens do Pedido */}
-                <div className="mb-4">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-2">Itens:</h4>
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    {order.items.map((item, index) => (
-                      <div key={index} className="flex justify-between text-sm py-1">
-                        <span className="text-gray-700">
-                          {item.quantity}x {item.name}
-                        </span>
-                        <span className="font-medium text-gray-900">
-                          R$ {(item.price * item.quantity).toFixed(2)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Total */}
-                <div className="mb-4 pt-3 border-t border-gray-200">
-                  <div className="flex justify-between text-lg font-bold">
-                    <span>Total:</span>
-                    <span>R$ {order.total.toFixed(2)}</span>
-                  </div>
-                </div>
-
-                {/* Tempo Decorrido */}
-                <div className="mb-4 text-sm text-gray-600">
-                  ⏱️ {getElapsedTime(order.createdAt)}
-                </div>
-
-                {/* Ações */}
-                <div className="flex flex-wrap gap-2">
-                  {order.status === 'pending' && (
-                    <button
-                      onClick={() => updateOrderStatus(order.id, 'preparing')}
-                      className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                    >
-                      Iniciar Preparo
-                    </button>
-                  )}
-
-                  {order.status === 'preparing' && (
-                    <button
-                      onClick={() => updateOrderStatus(order.id, 'ready')}
-                      className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-green-700 transition-colors"
-                    >
-                      Pronto para Entrega
-                    </button>
-                  )}
-
-                  {order.status === 'ready' && (
-                    <>
-                      {order.type === 'delivery' && (
-                        <button className="flex-1 bg-orange-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-orange-700 transition-colors">
-                          🏠 Iniciar Entrega
-                        </button>
-                      )}
-                      {order.type === 'takeout' && (
-                        <button
-                          onClick={() => updateOrderStatus(order.id, 'delivered')}
-                          className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-green-700 transition-colors"
-                        >
-                          Cliente Retirou
-                        </button>
-                      )}
-                    </>
-                  )}
-
-                  {order.status === 'delivered' && (
-                    <div className="flex-1 text-center py-2 px-4 rounded-lg bg-gray-100 text-gray-600 font-medium">
-                      ✅ Entregue
+        ) : (
+          <div className="space-y-6">
+            {filteredOrders.map((order) => (
+              <div key={order.id} className={`bg-white rounded-lg shadow-md border-2 ${getStatusColor(order.status)}`}>
+                <div className="p-6">
+                  {/* Cabeçalho do Pedido */}
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">
+                        Pedido #{order.id.slice(-6)}
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        {getTypeText(order.type)} • {formatDateTime(order.createdAt)}
+                      </p>
                     </div>
-                  )}
+                    <span className="px-3 py-1 text-xs font-semibold rounded-full bg-white bg-opacity-70">
+                      {getStatusText(order.status)}
+                    </span>
+                  </div>
+
+                  {/* Informações do Cliente */}
+                  <div className="mb-4 p-4 bg-white bg-opacity-50 rounded-lg">
+                    {order.customerName && (
+                      <p className="text-sm font-medium text-gray-900 mb-1">
+                        <strong>Cliente:</strong> {order.customerName}
+                      </p>
+                    )}
+                    {order.customerPhone && (
+                      <p className="text-sm text-gray-700 mb-1">
+                        <strong>Telefone:</strong> {order.customerPhone}
+                      </p>
+                    )}
+                    {order.customerAddress && order.type === 'delivery' && (
+                      <p className="text-sm text-gray-700">
+                        <strong>Endereço:</strong> {order.customerAddress}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Itens do Pedido */}
+                  <div className="mb-4">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-2">Itens:</h4>
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      {order.items.map((item, index) => (
+                        <div key={index} className="flex justify-between text-sm py-1">
+                          <span className="text-gray-700">
+                            {item.quantity}x {item.name}
+                          </span>
+                          <span className="font-medium text-gray-900">
+                            R$ {(item.price * item.quantity).toFixed(2)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Total */}
+                  <div className="mb-4 pt-3 border-t border-gray-200">
+                    <div className="flex justify-between text-lg font-bold">
+                      <span>Total:</span>
+                      <span>R$ {order.total.toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  {/* Tempo Decorrido */}
+                  <div className="mb-4 text-sm text-gray-600">
+                    ⏱️ {getElapsedTime(order.createdAt)}
+                  </div>
+
+                  {/* Ações */}
+                  <div className="flex flex-wrap gap-2">
+                    {order.status === 'pending' && (
+                      <button
+                        onClick={() => updateOrderStatus(order.id, 'preparing')}
+                        className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                      >
+                        Iniciar Preparo
+                      </button>
+                    )}
+
+                    {order.status === 'preparing' && (
+                      <button
+                        onClick={() => updateOrderStatus(order.id, 'ready')}
+                        className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-green-700 transition-colors"
+                      >
+                        Pronto para Entrega
+                      </button>
+                    )}
+
+                    {order.status === 'ready' && (
+                      <>
+                        {order.type === 'delivery' && (
+                          <button className="flex-1 bg-orange-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-orange-700 transition-colors">
+                            🏠 Iniciar Entrega
+                          </button>
+                        )}
+                        {order.type === 'takeout' && (
+                          <button
+                            onClick={() => updateOrderStatus(order.id, 'delivered')}
+                            className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-green-700 transition-colors"
+                          >
+                            Cliente Retirou
+                          </button>
+                        )}
+                      </>
+                    )}
+
+                    {order.status === 'delivered' && (
+                      <div className="flex-1 text-center py-2 px-4 rounded-lg bg-gray-100 text-gray-600 font-medium">
+                        ✅ Entregue
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </KitchenDeliveryLayout>
+            ))}
+          </div>
+        )}
+      </TopBar>
+    </div>
   );
 }
