@@ -15,12 +15,16 @@ export class NotificationService {
 
   static async showNotification(title: string, options?: NotificationOptions) {
     if ('Notification' in window && Notification.permission === 'granted') {
-      return new Notification(title, {
+      const notification = new Notification(title, {
         icon: '/icons/icon-192.png',
         badge: '/icons/icon-192.png',
-        vibrate: [200, 100, 200],
         ...options
       });
+
+      // Vibrate separadamente
+      this.vibrate([200, 100, 200]);
+
+      return notification;
     }
   }
 

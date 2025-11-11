@@ -16,13 +16,19 @@ export const metadata: Metadata = {
   title: "Atavi Comandas - Sistema de Gerenciamento",
   description: "Sistema rápido e eficiente para emissão e gestão de comandas de restaurantes",
   manifest: "/manifest.json",
-  themeColor: "#ef4444",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "Atavi Comandas",
   },
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: '#ef4444',
 };
 
 export default function RootLayout({

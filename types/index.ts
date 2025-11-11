@@ -32,6 +32,10 @@ export interface MenuItem {
   preparationTime: number;
 }
 
+export interface CartItem extends MenuItem {
+  quantity: number;
+}
+
 export interface OrderStatus {
   order: Order;
   kitchenStatus?: 'pending' | 'preparing' | 'ready';

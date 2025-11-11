@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { MenuItem, Order } from '@/types';
+import { MenuItem, Order, CartItem } from '@/types';
 import { StorageService } from '@/lib/storage';
 
 export default function NewOrder() {
   const router = useRouter();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [cart, setCart] = useState<MenuItem[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [orderData, setOrderData] = useState({
     type: 'dine-in' as 'dine-in' | 'delivery' | 'takeout',
     customerName: '',
@@ -27,7 +27,7 @@ export default function NewOrder() {
       if (existingItem) {
         return prev.map(cartItem =>
           cartItem.id === item.id
-            ? { ...cartItem, quantity: (cartItem.quantity || 1) + 1 }
+            ? { ...cartItem, quantity: cartItem.quantity + 1 }
             : cartItem
         );
       }
@@ -50,7 +50,7 @@ export default function NewOrder() {
   };
 
   const getTotal = () => {
-    return cart.reduce((total, item) => total + (item.price * (item.quantity || 1)), 0);
+    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
   const submitOrder = () => {
@@ -62,7 +62,7 @@ export default function NewOrder() {
     const orderItems = cart.map(item => ({
       id: item.id,
       name: item.name,
-      quantity: item.quantity || 1,
+      quantity: item.quantity,
       price: item.price,
       category: item.category,
       notes: ''
@@ -258,14 +258,14 @@ export default function NewOrder() {
                         </div>
                         <div className="flex items-center space-x-2">
                           <button
-                            onClick={() => updateQuantity(item.id, (item.quantity || 1) - 1)}
+                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
                             className="w-6 h-6 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-600 flex items-center justify-center text-xs"
                           >
                             -
                           </button>
-                          <span className="text-sm font-medium w-8 text-center">{item.quantity || 1}</span>
+                          <span className="text-sm font-medium w-8 text-center">{item.quantity}</span>
                           <button
-                            onClick={() => updateQuantity(item.id, (item.quantity || 1) + 1)}
+                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
                             className="w-6 h-6 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-600 flex items-center justify-center text-xs"
                           >
                             +

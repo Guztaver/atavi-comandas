@@ -10,7 +10,7 @@ export default function Delivery() {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'ready' | 'delivering' | 'delivered'>('all');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'preparing' | 'ready' | 'delivering' | 'delivered'>('all');
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -64,11 +64,12 @@ export default function Delivery() {
     }
   };
 
-  const getStatusText = (status: Order['status']) => {
+  const getStatusText = (status: Order['status'] | 'delivering') => {
     switch (status) {
       case 'pending': return 'Pendente';
       case 'preparing': return 'Preparando';
       case 'ready': return 'Pronto para Entrega';
+      case 'delivering': return 'Em Entrega';
       case 'delivered': return 'Entregue';
       default: return status;
     }
