@@ -1,5 +1,5 @@
 import { Order } from '@/types';
-import { StorageService } from './storage';
+import { BetterAuthStorageService } from './better-auth-storage';
 
 export class SyncService {
   private static readonly SYNC_QUEUE_KEY = 'atavi-sync-queue';
@@ -81,18 +81,23 @@ export class SyncService {
   }
 
   static async saveOrderWithSync(order: Order): Promise<void> {
-    // Salvar localmente primeiro
-    StorageService.saveOrder(order);
+    // Salvar usando Better Auth Storage Service (que já usa a API)
+    try {
+      await BetterAuthStorageService.createOrder(order);
+      console.log('Order saved to SQLite database:', order.id);
+    } catch (error) {
+      console.error('Failed to save order:', error);
 
-    // Adicionar à fila de sincronização
-    this.addToSyncQueue({
-      type: 'saveOrder',
-      data: order
-    });
+      // Adicionar à fila de sincronização como fallback
+      this.addToSyncQueue({
+        type: 'saveOrder',
+        data: order
+      });
 
-    // Tentar sincronizar se estiver online
-    if (this.isOnline()) {
-      this.syncWithServer();
+      // Tentar sincronizar se estiver online
+      if (this.isOnline()) {
+        this.syncWithServer();
+      }
     }
   }
 
@@ -146,11 +151,13 @@ export class SyncService {
 
   // Simular endpoints de API (em produção seriam chamadas reais)
   static async fetchOrdersFromServer(): Promise<Order[]> {
-    // Simular busca de pedidos do servidor
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // Retornar dados simulados
-    return [];
+    // Usar Better Auth Storage Service para buscar pedidos do banco de dados
+    try {
+      return await BetterAuthStorageService.getOrders();
+    } catch (error) {
+      console.error('Failed to fetch orders from server:', error);
+      return [];
+    }
   }
 
   static async pushOrdersToServer(orders: Order[]): Promise<boolean> {

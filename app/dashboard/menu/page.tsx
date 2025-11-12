@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { MenuItem } from '@/types';
-import { StorageService } from '@/lib/storage';
+import { BetterAuthStorageService } from '@/lib/better-auth-storage';
 import Link from 'next/link';
 
 export default function MenuManagement() {
@@ -31,14 +31,17 @@ export default function MenuManagement() {
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [bulkAction, setBulkAction] = useState<'none' | 'delete' | 'available' | 'unavailable'>('none');
 
-  useEffect(() => {
-    loadMenuItems();
-  }, []);
-
-  const loadMenuItems = () => {
-    const items = StorageService.getMenuItems();
+  const loadMenuItems = async () => {
+    const items = await BetterAuthStorageService.getMenuItems();
     setMenuItems(items);
   };
+
+  useEffect(() => {
+    const loadData = async () => {
+      await loadMenuItems();
+    };
+    loadData();
+  }, []);
 
   const resetForm = () => {
     setFormData({
@@ -112,7 +115,7 @@ export default function MenuManagement() {
       organic: formData.organic
     };
 
-    StorageService.saveMenuItem(menuItem);
+    BetterAuthStorageService.saveMenuItem(menuItem);
     loadMenuItems();
     closeForm();
   };
@@ -132,7 +135,7 @@ export default function MenuManagement() {
       id: Date.now().toString(),
       name: `${item.name} (Cópia)`
     };
-    StorageService.saveMenuItem(duplicatedItem);
+    BetterAuthStorageService.saveMenuItem(duplicatedItem);
     loadMenuItems();
   };
 
@@ -179,7 +182,7 @@ export default function MenuManagement() {
               ...item, 
               isAvailable: bulkAction === 'available' 
             };
-            StorageService.saveMenuItem(updatedItem);
+            BetterAuthStorageService.saveMenuItem(updatedItem);
           }
         }
       });
@@ -215,7 +218,7 @@ export default function MenuManagement() {
         if (Array.isArray(importedItems)) {
           if (confirm(`Importar ${importedItems.length} itens? Isso irá substituir o cardápio atual.`)) {
             importedItems.forEach(item => {
-              StorageService.saveMenuItem({
+              BetterAuthStorageService.saveMenuItem({
                 ...item,
                 id: Date.now().toString() + Math.random()
               });
@@ -235,7 +238,7 @@ export default function MenuManagement() {
     const item = menuItems.find(item => item.id === id);
     if (item) {
       const updatedItem = { ...item, isAvailable: !item.isAvailable };
-      StorageService.saveMenuItem(updatedItem);
+      BetterAuthStorageService.saveMenuItem(updatedItem);
       loadMenuItems();
     }
   };

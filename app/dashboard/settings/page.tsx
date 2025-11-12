@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { AppSettings } from '@/types';
-import { StorageService } from '@/lib/storage';
+import { BetterAuthStorageService } from '@/lib/better-auth-storage';
 import { StatisticsPeriod } from '@/lib/date-utils';
 import Link from 'next/link';
 
@@ -17,7 +17,7 @@ export default function Settings() {
 
   useEffect(() => {
     const loadSettings = () => {
-      const savedSettings = StorageService.getSettings();
+      const savedSettings = BetterAuthStorageService.getSettings();
       setSettings(savedSettings);
     };
 
@@ -31,7 +31,7 @@ export default function Settings() {
   };
 
   const handleSave = () => {
-    StorageService.saveSettings(settings);
+    BetterAuthStorageService.saveSettings(settings);
     setHasChanges(false);
 
     // Show success feedback
@@ -50,7 +50,7 @@ export default function Settings() {
   };
 
   const handleCancel = () => {
-    const savedSettings = StorageService.getSettings();
+    const savedSettings = BetterAuthStorageService.getSettings();
     setSettings(savedSettings);
     setHasChanges(false);
   };

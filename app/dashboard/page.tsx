@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Order } from '@/types';
-import { StorageService } from '@/lib/storage';
+import { BetterAuthStorageService } from '@/lib/better-auth-storage';
 import Link from 'next/link';
 import SyncStatus from '@/components/ui/SyncStatus';
 import { KitchenTicket } from '@/components/receipts/KitchenTicket';
@@ -24,9 +24,9 @@ export default function Dashboard() {
   const { printReceipt, status: printerStatus, connect, disconnect } = usePrinter();
 
   useEffect(() => {
-    const loadOrders = () => {
-      const allOrders = StorageService.getOrders();
-      const period = StorageService.getStatisticsPeriod();
+    const loadOrders = async () => {
+      const allOrders = await BetterAuthStorageService.getOrders();
+      const period = BetterAuthStorageService.getStatisticsPeriod();
       setSelectedPeriod(period);
 
       setOrders(allOrders);
@@ -41,23 +41,27 @@ export default function Dashboard() {
 
   // Update filtered orders and stats when orders or period changes
   useEffect(() => {
-    const filtered = filterOrdersByPeriod(orders, selectedPeriod);
-    setFilteredOrders(filtered);
+    const updateFilteredOrders = () => {
+      const filtered = filterOrdersByPeriod(orders, selectedPeriod);
+      setFilteredOrders(filtered);
 
-    const newStats = {
-      total: filtered.length,
-      pending: filtered.filter(o => o.status === 'pending').length,
-      preparing: filtered.filter(o => o.status === 'preparing').length,
-      ready: filtered.filter(o => o.status === 'ready').length,
-      delivered: filtered.filter(o => o.status === 'delivered').length
+      const newStats = {
+        total: filtered.length,
+        pending: filtered.filter(o => o.status === 'pending').length,
+        preparing: filtered.filter(o => o.status === 'preparing').length,
+        ready: filtered.filter(o => o.status === 'ready').length,
+        delivered: filtered.filter(o => o.status === 'delivered').length
+      };
+
+      setStats(newStats);
     };
-
-    setStats(newStats);
+    
+    updateFilteredOrders();
   }, [orders, selectedPeriod]);
 
   const handlePeriodChange = (period: StatisticsPeriod) => {
     setSelectedPeriod(period);
-    StorageService.saveStatisticsPeriod(period);
+    BetterAuthStorageService.saveStatisticsPeriod(period);
   };
 
   const getStatusColor = (status: Order['status']) => {

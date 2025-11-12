@@ -1,80 +1,91 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, ReactNode, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AuthService } from '@/lib/auth';
+import { useSession, signOut } from '@/lib/auth-client';
+import { User } from '@/types';
 
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
-  user: string | null;
-  login: (username: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  user: User | null;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<string | null>(null);
+  const { data: session, isPending, error } = useSession();
   const router = useRouter();
+  const [sessionTimeout, setSessionTimeout] = useState(false);
 
-  // Initialize authentication state
+  // Add timeout for session loading
   useEffect(() => {
-    const checkAuth = () => {
-      const authenticated = AuthService.isAuthenticated();
-      const currentUser = AuthService.getCurrentUser();
+    if (isPending) {
+      const timer = setTimeout(() => {
+        setSessionTimeout(true);
+        console.warn('Session loading timeout - there may be an authentication issue');
+      }, 15000); // 15 second timeout
 
-      setIsAuthenticated(authenticated);
-      setUser(currentUser);
-      setIsLoading(false);
-    };
-
-    checkAuth();
-  }, []);
-
-  // Centralized redirect logic
-  useEffect(() => {
-    if (isLoading) return; // Don't redirect while loading
-
-    const currentPath = window.location.pathname;
-    
-    if (isAuthenticated) {
-      // If authenticated and on login page, redirect to dashboard
-      if (currentPath === '/login') {
-        router.push('/dashboard');
-      }
+      return () => clearTimeout(timer);
     } else {
-      // If not authenticated and on protected route, redirect to login
-      const protectedRoutes = ['/dashboard', '/kitchen', '/delivery'];
-      const isProtectedRoute = protectedRoutes.some(route => 
-        currentPath.startsWith(route)
-      );
-      
-      if (isProtectedRoute) {
-        router.push('/login');
+      setSessionTimeout(false);
+    }
+  }, [isPending]);
+
+  const isAuthenticated = !!session && !error;
+  const isLoading = isPending && !sessionTimeout;
+
+  // Debug logging for authentication state
+  useEffect(() => {
+    console.log('AuthProvider state:', {
+      isPending,
+      isAuthenticated,
+      hasError: !!error,
+      hasSession: !!session,
+      sessionTimeout,
+      userId: session?.user?.id
+    });
+  }, [isPending, isAuthenticated, error, session, sessionTimeout]);
+
+  // Convert Better Auth session user to our User type
+  const user: User | null = session?.user ? {
+    id: session.user.id,
+    username: session.user.email?.split('@')[0] || 'user',
+    email: session.user.email || '',
+    role: ((session.user as any).role as 'admin' | 'kitchen' | 'delivery') || 'kitchen',
+    created_at: new Date(),
+  } : null;
+
+  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { signIn } = await import('@/lib/auth-client');
+      const result = await signIn.email({
+        email,
+        password,
+      });
+
+      if (result.data) {
+        return { success: true };
       }
+
+      return { success: false, error: result.error?.message || 'Login failed' };
+    } catch (error) {
+      console.error('Login error:', error);
+      return { success: false, error: 'An unexpected error occurred' };
     }
-  }, [isAuthenticated, isLoading, router]);
-
-  const login = async (username: string, password: string): Promise<boolean> => {
-    const success = AuthService.login(username, password);
-
-    if (success) {
-      setIsAuthenticated(true);
-      setUser(username);
-      return true;
-    }
-
-    return false;
   };
 
-  const logout = () => {
-    AuthService.logout();
-    setIsAuthenticated(false);
-    setUser(null);
-    router.push('/login');
+  const logout = async () => {
+    try {
+      await signOut();
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Force logout even if API call fails
+      router.push('/login');
+    }
   };
 
   const value: AuthContextType = {
@@ -82,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
     user,
     login,
-    logout
+    logout,
   };
 
   return (

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Order } from '@/types';
-import { StorageService } from '@/lib/storage';
+import { BetterAuthStorageService } from '@/lib/better-auth-storage';
 import { CustomerReceipt } from '@/components/receipts/CustomerReceipt';
 import { usePrinter } from '@/hooks/usePrinter';
 import { TopBar } from '@/components/TopBar';
@@ -15,8 +15,8 @@ export default function Delivery() {
   const { printReceipt, status: printerStatus } = usePrinter();
 
   useEffect(() => {
-    const loadOrders = () => {
-      const allOrders = StorageService.getOrders();
+    const loadOrders = async () => {
+      const allOrders = await BetterAuthStorageService.getOrders();
       // Mostrar apenas pedidos de delivery
       const deliveryOrders = allOrders.filter(order =>
         order.type === 'delivery' || order.type === 'takeout'
@@ -35,7 +35,7 @@ export default function Delivery() {
     const order = orders.find(o => o.id === orderId);
     if (order) {
       const updatedOrder = { ...order, status: newStatus, updatedAt: new Date() };
-      StorageService.saveOrder(updatedOrder);
+      BetterAuthStorageService.saveOrder(updatedOrder);
 
       // Notificar sonoramente
       const audio = new Audio('/notification.mp3');

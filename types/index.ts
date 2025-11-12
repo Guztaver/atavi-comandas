@@ -1,56 +1,86 @@
 export interface OrderItem {
-  id: string;
-  name: string;
-  quantity: number;
-  price: number;
-  notes?: string;
-  category: 'food' | 'drink' | 'dessert';
+	id: string;
+	name: string;
+	quantity: number;
+	price: number;
+	notes?: string;
+	category: "food" | "drink" | "dessert";
 }
 
 export interface Order {
-  id: string;
-  items: OrderItem[];
-  total: number;
-  status: 'pending' | 'preparing' | 'ready' | 'delivered';
-  type: 'dine-in' | 'delivery' | 'takeout';
-  customerName?: string;
-  customerAddress?: string;
-  customerPhone?: string;
-  createdAt: Date;
-  updatedAt: Date;
-  estimatedTime?: number;
-  tableNumber?: string;
+	id: string;
+	items: OrderItem[];
+	total: number;
+	status: "pending" | "preparing" | "ready" | "delivered";
+	type: "dine-in" | "delivery" | "takeout";
+	customerName?: string;
+	customerAddress?: string;
+	customerPhone?: string;
+	createdAt: Date;
+	updatedAt: Date;
+	estimatedTime?: number;
+	tableNumber?: string;
 }
 
 export interface MenuItem {
-  id: string;
-  name: string;
-  price: number;
-  category: 'food' | 'drink' | 'dessert';
-  description?: string;
-  isAvailable: boolean;
-  preparationTime: number;
+	id: string;
+	name: string;
+	price: number;
+	category: "food" | "drink" | "dessert";
+	description?: string;
+	isAvailable: boolean;
+	preparationTime: number;
 }
 
 export interface CartItem extends MenuItem {
-  quantity: number;
+	quantity: number;
+	notes?: string;
 }
 
 export interface OrderStatus {
-  order: Order;
-  kitchenStatus?: 'pending' | 'preparing' | 'ready';
-  deliveryStatus?: 'pending' | 'ready' | 'delivering' | 'delivered';
+	order: Order;
+	kitchenStatus?: "pending" | "preparing" | "ready";
+	deliveryStatus?: "pending" | "ready" | "delivering" | "delivered";
 }
 
 export interface AppSettings {
-  sound: boolean;
-  vibration: boolean;
-  desktop: boolean;
-  statisticsPeriod: 'daily' | 'weekly' | 'monthly';
+	sound: boolean;
+	vibration: boolean;
+	desktop: boolean;
+	statisticsPeriod: "daily" | "weekly" | "monthly";
 }
 
 export interface NotificationSettings {
-  sound: boolean;
-  vibration: boolean;
-  desktop: boolean;
+	sound: boolean;
+	vibration: boolean;
+	desktop: boolean;
+}
+
+// Authentication types
+export interface User {
+	id: string;
+	username: string;
+	email: string;
+	role: "admin" | "kitchen" | "delivery";
+	created_at: Date;
+}
+
+export interface AuthState {
+	user: User | null;
+	isAuthenticated: boolean;
+	isLoading: boolean;
+	login: (username: string, password: string) => Promise<boolean>;
+	logout: () => void;
+}
+
+export interface LoginCredentials {
+	username: string;
+	password: string;
+}
+
+export interface AuthContextType {
+	user: User | null;
+	login: (username: string, password: string) => Promise<boolean>;
+	logout: () => void;
+	isLoading: boolean;
 }

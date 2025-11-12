@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useOrders } from './hooks/useOrders';
 import { OrderFilters } from './utils/orderFilters';
-import { SearchFilters } from '@/types/orders';
+
 import { Order } from '@/types';
 
 export default function OrdersPage() {
@@ -15,8 +15,7 @@ export default function OrdersPage() {
     clearFilters,
     deleteOrder,
     updateOrderStatus,
-    isLoading,
-    refetch
+    isLoading
   } = useOrders();
 
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);

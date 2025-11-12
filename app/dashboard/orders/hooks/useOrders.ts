@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Order } from '@/types';
-import { StorageService } from '@/lib/storage';
+import { BetterAuthStorageService } from '@/lib/better-auth-storage';
 import { SearchFilters } from '@/types/orders';
 import { OrderFilters } from '../utils/orderFilters';
 
@@ -22,12 +22,12 @@ export function useOrders() {
     loadOrders();
   }, []);
 
-  const loadOrders = () => {
+  const loadOrders = async () => {
     setIsLoading(true);
     try {
-      const allOrders = StorageService.getOrders();
+      const allOrders = await BetterAuthStorageService.getOrders();
       // Sort by date descending (newest first)
-      const sortedOrders = allOrders.sort((a, b) => 
+      const sortedOrders = allOrders.sort((a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
       setOrders(sortedOrders);
@@ -57,23 +57,14 @@ export function useOrders() {
     });
   };
 
-  const deleteOrder = (orderId: string) => {
-    StorageService.deleteOrder(orderId);
-    loadOrders();
+  const deleteOrder = async (orderId: string) => {
+    await BetterAuthStorageService.deleteOrder(orderId);
+    await loadOrders();
   };
 
-  const updateOrderStatus = (orderId: string, status: Order['status']) => {
-    const orders = StorageService.getOrders();
-    const orderIndex = orders.findIndex(o => o.id === orderId);
-    if (orderIndex >= 0) {
-      orders[orderIndex] = {
-        ...orders[orderIndex],
-        status,
-        updatedAt: new Date()
-      };
-      localStorage.setItem('atavi-orders', JSON.stringify(orders));
-      loadOrders();
-    }
+  const updateOrderStatus = async (orderId: string, status: Order['status']) => {
+    await BetterAuthStorageService.updateOrderStatus(orderId, status);
+    await loadOrders();
   };
 
   return {

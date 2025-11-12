@@ -1,14 +1,49 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function LoginPage() {
-	const [username, setUsername] = useState("");
+	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
-	const { login, isAuthenticated, isLoading: authLoading } = useAuth();
+	const [redirectTimeout, setRedirectTimeout] = useState(false);
+	const router = useRouter();
+	const { login, isAuthenticated, isLoading: authLoading, user } = useAuth();
+
+	// Handle redirect after successful login
+	useEffect(() => {
+		if (isAuthenticated && user) {
+			const redirectTimer = setTimeout(() => {
+				// Redirect based on user role
+				switch (user.role) {
+					case 'admin':
+						router.push('/dashboard');
+						break;
+					case 'kitchen':
+						router.push('/kitchen');
+						break;
+					case 'delivery':
+						router.push('/delivery');
+						break;
+					default:
+						router.push('/dashboard');
+				}
+			}, 500); // Small delay to ensure session is fully established
+
+			// Set a timeout to prevent infinite hanging
+			const timeoutTimer = setTimeout(() => {
+				setRedirectTimeout(true);
+			}, 10000); // 10 second timeout
+
+			return () => {
+				clearTimeout(redirectTimer);
+				clearTimeout(timeoutTimer);
+			};
+		}
+	}, [isAuthenticated, user, router]);
 
 	// Show loading spinner while checking authentication
 	if (authLoading) {
@@ -45,6 +80,38 @@ export default function LoginPage() {
 
 	// If authenticated but still on login page, show loading while redirect happens
 	if (isAuthenticated) {
+		if (redirectTimeout) {
+			// Show error if redirect takes too long
+			return (
+				<div className="min-h-screen bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center">
+					<div className="text-center">
+						<div className="inline-flex items-center justify-center w-16 h-16 bg-red-500 rounded-full mb-4">
+							<svg
+								className="h-8 w-8 text-white"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									strokeWidth={2}
+									d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+								/>
+							</svg>
+						</div>
+					<p className="text-gray-600 mb-4">Tempo de redirecionamento excedido</p>
+					<button
+						onClick={() => window.location.reload()}
+						className="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition-colors"
+					>
+						Tentar novamente
+					</button>
+					</div>
+				</div>
+			);
+		}
+
 		return (
 			<div className="min-h-screen bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center">
 				<div className="text-center">
@@ -81,10 +148,10 @@ export default function LoginPage() {
 		setError("");
 		setIsLoading(true);
 
-		const success = await login(username, password);
+		const result = await login(email, password);
 
-		if (!success) {
-			setError("Usuário ou senha incorretos");
+		if (!result.success) {
+			setError(result.error || "Erro ao fazer login");
 		}
 
 		setIsLoading(false);
@@ -116,20 +183,20 @@ export default function LoginPage() {
 				<form onSubmit={handleSubmit} className="space-y-6">
 					<div>
 						<label
-							htmlFor="username"
+							htmlFor="email"
 							className="block text-sm font-medium text-gray-700 mb-2"
 						>
-							Usuário
+							E-mail
 						</label>
 						<input
-							id="username"
-							type="text"
-							value={username}
-							onChange={(e) => setUsername(e.target.value)}
+							id="email"
+							type="email"
+							value={email}
+							onChange={(e) => setEmail(e.target.value)}
 							className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-							placeholder="Digite seu usuário"
+							placeholder="Digite seu e-mail"
 							required
-							autoComplete="username"
+							autoComplete="email"
 						/>
 					</div>
 
