@@ -49,10 +49,14 @@ export const auth = betterAuth({
   // Advanced configuration
   advanced: {
     useSecureCookies: process.env.NODE_ENV === "production",
+    crossSubDomainCookies: {
+      enabled: false,
+    },
   },
 
   // URL configuration
   basePath: "/api/auth",
+  baseURL: process.env.NEXT_PUBLIC_APP_URL,
 });
 
 export type Session = typeof auth.$Infer.Session;

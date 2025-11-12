@@ -4,6 +4,7 @@ import { createContext, useContext, ReactNode, useEffect, useState } from 'react
 import { useRouter } from 'next/navigation';
 import { useSession, signOut } from '@/lib/auth-client';
 import { User } from '@/types';
+import { LoadingSpinner } from './LoadingSpinner';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -26,7 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const timer = setTimeout(() => {
         setSessionTimeout(true);
         console.warn('Session loading timeout - there may be an authentication issue');
-      }, 15000); // 15 second timeout
+      }, 5000); // Reduced to 5 second timeout
 
       return () => clearTimeout(timer);
     } else {
@@ -95,6 +96,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
   };
+
+  // Show loading spinner while checking authentication state
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
 
   return (
     <AuthContext.Provider value={value}>
