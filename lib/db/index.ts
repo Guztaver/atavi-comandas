@@ -3,9 +3,27 @@ import { createClient } from "@libsql/client";
 import * as schema from "./schema";
 
 // Create database client with automatic schema creation
-const client = createClient({
-  url: process.env.DATABASE_URL || "file:./atavi.db",
-});
+// In production, use external database; in development, fall back to local file
+const isProduction = process.env.NODE_ENV === "production";
+const isVercel = !!process.env.VERCEL;
+
+let client;
+
+if (isVercel || isProduction) {
+  // Production: Use external database (Turso)
+  if (!process.env.DATABASE_URL || !process.env.DATABASE_AUTH_TOKEN) {
+    console.warn("Production database credentials not found. App may not work correctly.");
+  }
+  client = createClient({
+    url: process.env.DATABASE_URL || "file:./atavi.db",
+    authToken: process.env.DATABASE_AUTH_TOKEN,
+  });
+} else {
+  // Development: Use local SQLite file
+  client = createClient({
+    url: process.env.DATABASE_URL || "file:./atavi.db",
+  });
+}
 
 // Create and export database instance with automatic schema updates
 export const db = drizzle(client, {
@@ -20,6 +38,15 @@ export * from "./schema";
 export async function initializeDatabase() {
   try {
     console.log("Initializing database...");
+
+    // Test database connection
+    try {
+      await db.execute("SELECT 1");
+      console.log("Database connection successful");
+    } catch (error) {
+      console.error("Database connection failed:", error);
+      throw new Error("Unable to connect to database. Please check DATABASE_URL and DATABASE_AUTH_TOKEN environment variables.");
+    }
 
     // Check if we need to create default menu items
     const existingItems = await db.query.menuItems.findMany();
