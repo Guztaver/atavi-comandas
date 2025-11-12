@@ -2,13 +2,16 @@ import { drizzle } from "drizzle-orm/libsql";
 import { createClient } from "@libsql/client";
 import * as schema from "./schema";
 
-// Create database client
+// Create database client with automatic schema creation
 const client = createClient({
   url: process.env.DATABASE_URL || "file:./atavi.db",
 });
 
-// Create and export database instance
-export const db = drizzle(client, { schema });
+// Create and export database instance with automatic schema updates
+export const db = drizzle(client, {
+  schema,
+  logger: process.env.NODE_ENV === 'development'
+});
 
 // Export schema for easy access
 export * from "./schema";
@@ -52,4 +55,9 @@ export async function initializeDatabase() {
     console.error("Failed to initialize database:", error);
     throw error;
   }
+}
+
+// Auto-setup database on first import (development only)
+if (process.env.NODE_ENV === 'development') {
+  initializeDatabase().catch(console.error);
 }
