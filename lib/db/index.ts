@@ -57,7 +57,5 @@ export async function initializeDatabase() {
   }
 }
 
-// Auto-setup database on first import (development only)
-if (process.env.NODE_ENV === 'development') {
-  initializeDatabase().catch(console.error);
-}
+// Note: Database is initialized lazily when first accessed
+// This prevents initialization issues in serverless environments
