@@ -7,7 +7,7 @@ import * as schema from "./schema";
 const isProduction = process.env.NODE_ENV === "production";
 const isVercel = !!process.env.VERCEL;
 
-let client;
+let client: ReturnType<typeof createClient>;
 
 if (isVercel || isProduction) {
   // Production: Use external database (Turso)
@@ -41,7 +41,7 @@ export async function initializeDatabase() {
 
     // Test database connection
     try {
-      await db.execute("SELECT 1");
+      await client.execute("SELECT 1");
       console.log("Database connection successful");
     } catch (error) {
       console.error("Database connection failed:", error);
