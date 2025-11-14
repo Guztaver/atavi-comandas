@@ -5,7 +5,7 @@ import { printerService } from '@/lib/printer.service';
 import { PrinterConfig, PrinterStatus, PrintQueue } from '@/types/printer';
 
 export function usePrinter() {
-  const [status, setStatus] = useState<PrinterStatus>({ connected: false, ready: false });
+  const [status, setStatus] = useState<PrinterStatus>({ ready: true });
   const [queue, setQueue] = useState<PrintQueue>({ jobs: [], isProcessing: false });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,41 +29,21 @@ export function usePrinter() {
     };
   }, []);
 
-  const connect = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      await printerService.connect();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to connect to printer');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const disconnect = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      await printerService.disconnect();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to disconnect from printer');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
   const printReceipt = useCallback(async (
     receiptElement: React.ReactElement,
     type: 'kitchen-ticket' | 'customer-receipt',
     orderId: string
   ) => {
     setError(null);
+    setIsLoading(true);
     try {
       const jobId = await printerService.printReceipt(receiptElement, type, orderId);
       return jobId;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to print receipt');
       throw err;
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -84,8 +64,6 @@ export function usePrinter() {
     queue,
     isLoading,
     error,
-    connect,
-    disconnect,
     printReceipt,
     setConfig,
     getConfig,

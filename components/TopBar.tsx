@@ -21,18 +21,18 @@ interface TopBarProps {
   backLabel?: string;
 }
 
-export function TopBar({ 
-  title, 
-  subtitle, 
-  children, 
-  showPrinterStatus = true,
+export function TopBar({
+  title,
+  subtitle,
+  children,
+  showPrinterStatus = false,
   actions,
   statistics,
   showBackButton = false,
   backTo,
   backLabel
 }: TopBarProps) {
-  const { status: printerStatus, connect, disconnect } = usePrinter();
+  const { status: printerStatus } = usePrinter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
 
@@ -190,25 +190,17 @@ export function TopBar({
               {showPrinterStatus && (
                 <div className="flex items-center gap-2 text-sm">
                   <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${
-                    printerStatus.connected
+                    printerStatus.ready
                       ? 'bg-green-100 text-green-800 border border-green-200'
-                      : 'bg-red-100 text-red-800 border border-red-200'
+                      : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
                   }`}>
                     <div className={`w-2 h-2 rounded-full ${
-                      printerStatus.connected ? 'bg-green-500' : 'bg-red-500'
+                      printerStatus.ready ? 'bg-green-500' : 'bg-yellow-500'
                     }`} />
                     <span className="font-medium">
-                      Impressora {printerStatus.connected ? 'Conectada' : 'Desconectada'}
+                      Impressora {printerStatus.ready ? 'Pronta' : 'Indisponível'}
                     </span>
                   </div>
-                  {!printerStatus.connected && (
-                    <button
-                      onClick={connect}
-                      className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
-                    >
-                      Conectar
-                    </button>
-                  )}
                 </div>
               )}
 

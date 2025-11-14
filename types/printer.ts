@@ -2,13 +2,9 @@ export interface PrinterConfig {
   type: 'epson' | 'star';
   width: number;
   characterSet?: string;
-  connectionType: 'usb' | 'network' | 'bluetooth';
-  networkAddress?: string;
-  baudRate?: number;
 }
 
 export interface PrinterStatus {
-  connected: boolean;
   ready: boolean;
   error?: string;
   lastError?: string;

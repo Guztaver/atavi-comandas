@@ -40,7 +40,7 @@ export default function Kitchen() {
       audio.play().catch(() => {}); // Ignorar erro se o arquivo não existir
 
       // Auto-print kitchen ticket when order starts preparation
-      if (newStatus === 'preparing' && printerStatus.connected) {
+      if (newStatus === 'preparing') {
         try {
           printReceipt(
             <KitchenTicket order={updatedOrder} />,
@@ -142,10 +142,9 @@ export default function Kitchen() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <TopBar 
-        title="Cozinha" 
+      <TopBar
+        title="Cozinha"
         subtitle="Gerencie os pedidos em preparo"
-        showPrinterStatus={true}
         showBackButton={true}
         backTo="/dashboard"
         backLabel="Dashboard"

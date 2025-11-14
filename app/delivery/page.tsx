@@ -42,7 +42,7 @@ export default function Delivery() {
       audio.play().catch(() => {}); // Ignorar erro se o arquivo não existir
 
       // Auto-print customer receipt when order is ready or delivered
-      if ((newStatus === 'ready' || newStatus === 'delivered') && printerStatus.connected) {
+      if (newStatus === 'ready' || newStatus === 'delivered') {
         try {
           printReceipt(
             <CustomerReceipt order={updatedOrder} />,
@@ -138,10 +138,9 @@ export default function Delivery() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <TopBar 
-        title="Delivery" 
+      <TopBar
+        title="Delivery"
         subtitle="Gerencie as entregas e retiradas"
-        showPrinterStatus={true}
         showBackButton={true}
         backTo="/dashboard"
         backLabel="Dashboard"

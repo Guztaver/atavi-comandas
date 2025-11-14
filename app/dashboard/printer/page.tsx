@@ -6,12 +6,10 @@ import { usePrinter } from '@/hooks/usePrinter';
 import Link from 'next/link';
 
 export default function PrinterSettings() {
-  const { status, connect, disconnect, setConfig, getConfig, isLoading, error, clearQueue, queue } = usePrinter();
+  const { status, setConfig, getConfig, isLoading, error, clearQueue, queue } = usePrinter();
   const [config, setConfigState] = useState<PrinterConfig>({
     type: 'epson',
-    width: 42,
-    connectionType: 'usb',
-    baudRate: 9100
+    width: 42
   });
 
   useEffect(() => {
@@ -26,24 +24,7 @@ export default function PrinterSettings() {
     alert('Configurações da impressora salvas com sucesso!');
   };
 
-  const handleConnect = async () => {
-    try {
-      await connect();
-      alert('Impressora conectada com sucesso!');
-    } catch (error) {
-      alert(`Erro ao conectar impressora: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
-    }
-  };
-
-  const handleDisconnect = async () => {
-    try {
-      await disconnect();
-      alert('Impressora desconectada com sucesso!');
-    } catch (error) {
-      alert(`Erro ao desconectar impressora: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
-    }
-  };
-
+  
   const handleClearQueue = () => {
     clearQueue();
     alert('Fila de impressão limpa com sucesso!');
@@ -76,25 +57,7 @@ export default function PrinterSettings() {
         <div className="px-4 py-5 sm:p-6">
           <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Status da Impressora</h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className={`p-4 rounded-lg border-2 ${
-              status.connected
-                ? 'bg-green-50 border-green-200'
-                : 'bg-red-50 border-red-200'
-            }`}>
-              <div className="flex items-center">
-                <div className={`w-3 h-3 rounded-full mr-3 ${
-                  status.connected ? 'bg-green-500' : 'bg-red-500'
-                }`} />
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Conexão</p>
-                  <p className="text-sm text-gray-600">
-                    {status.connected ? 'Conectada' : 'Desconectada'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className={`p-4 rounded-lg border-2 ${
               status.ready
                 ? 'bg-green-50 border-green-200'
@@ -105,9 +68,9 @@ export default function PrinterSettings() {
                   status.ready ? 'bg-green-500' : 'bg-yellow-500'
                 }`} />
                 <div>
-                  <p className="text-sm font-medium text-gray-900">Pronta</p>
+                  <p className="text-sm font-medium text-gray-900">Sistema de Impressão</p>
                   <p className="text-sm text-gray-600">
-                    {status.ready ? 'Sim' : 'Não'}
+                    {status.ready ? 'Pronta para imprimir' : 'Indisponível'}
                   </p>
                 </div>
               </div>
@@ -134,43 +97,7 @@ export default function PrinterSettings() {
             </div>
           )}
 
-          <div className="mt-6 flex gap-3">
-            {!status.connected ? (
-              <button
-                onClick={handleConnect}
-                disabled={isLoading}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400"
-              >
-                {isLoading ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Conectando...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                    </svg>
-                    Conectar
-                  </>
-                )}
-              </button>
-            ) : (
-              <button
-                onClick={handleDisconnect}
-                disabled={isLoading}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 disabled:bg-gray-400"
-              >
-                <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                </svg>
-                Desconectar
-              </button>
-            )}
-
+          <div className="mt-6">
             <button
               onClick={handleClearQueue}
               className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
@@ -218,54 +145,6 @@ export default function PrinterSettings() {
                 <option value={48}>48 caracteres</option>
               </select>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tipo de Conexão
-              </label>
-              <select
-                value={config.connectionType}
-                onChange={(e) => setConfigState(prev => ({ ...prev, connectionType: e.target.value as 'usb' | 'network' | 'bluetooth' }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="usb">USB</option>
-                <option value="network">Rede</option>
-                <option value="bluetooth">Bluetooth</option>
-              </select>
-            </div>
-
-            {config.connectionType === 'network' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Endereço IP
-                </label>
-                <input
-                  type="text"
-                  value={config.networkAddress || ''}
-                  onChange={(e) => setConfigState(prev => ({ ...prev, networkAddress: e.target.value }))}
-                  placeholder="192.168.1.100"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Baud Rate
-              </label>
-              <select
-                value={config.baudRate}
-                onChange={(e) => setConfigState(prev => ({ ...prev, baudRate: parseInt(e.target.value) }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value={9600}>9600</option>
-                <option value={19200}>19200</option>
-                <option value={38400}>38400</option>
-                <option value={57600}>57600</option>
-                <option value={115200}>115200</option>
-                <option value={9100}>9100 (Padrão)</option>
-              </select>
-            </div>
           </div>
 
           <div className="mt-6">
@@ -289,8 +168,8 @@ export default function PrinterSettings() {
           <p>• <strong>Cozinha:</strong> Comandas são impressas automaticamente quando os pedidos mudam para "Preparando"</p>
           <p>• <strong>Delivery:</strong> Recibos são impressos automaticamente quando os pedidos ficam "Prontos" ou "Entregues"</p>
           <p>• <strong>Dashboard:</strong> Use os botões de impressão na tabela de pedidos para imprimir manualmente</p>
-          <p>• <strong>USB:</strong> Certifique-se de que o navegador suporta Web Serial API (Chrome/Edge recomendados)</p>
-          <p>• <strong>Configuração:</strong> Ajuste as configurações da impressora conforme o modelo utilizado</p>
+          <p>• <strong>Impressão Nativa:</strong> Usa o sistema de impressão do navegador para compatibilidade universal</p>
+          <p>• <strong>Configuração:</strong> Ajuste o tipo e largura da impressora para formatação adequada</p>
         </div>
       </div>
     </div>
