@@ -21,7 +21,7 @@ export default function Dashboard() {
     delivered: 0
   });
   const [selectedPeriod, setSelectedPeriod] = useState<StatisticsPeriod>('daily');
-  const { printReceipt, status: printerStatus, connect, disconnect } = usePrinter();
+  const { printReceipt, status: printerStatus } = usePrinter();
 
   useEffect(() => {
     const loadOrders = async () => {
@@ -105,10 +105,6 @@ export default function Dashboard() {
   };
 
   const printKitchenTicket = async (order: Order) => {
-    if (!printerStatus.connected) {
-      alert('Por favor, conecte a impressora primeiro');
-      return;
-    }
 
     try {
       await printReceipt(
@@ -123,10 +119,6 @@ export default function Dashboard() {
   };
 
   const printCustomerReceipt = async (order: Order) => {
-    if (!printerStatus.connected) {
-      alert('Por favor, conecte a impressora primeiro');
-      return;
-    }
 
     try {
       await printReceipt(
@@ -154,25 +146,17 @@ export default function Dashboard() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm">
             <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${
-              printerStatus.connected
+              printerStatus.ready
                 ? 'bg-green-100 text-green-800 border border-green-200'
-                : 'bg-red-100 text-red-800 border border-red-200'
+                : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
             }`}>
               <div className={`w-2 h-2 rounded-full ${
-                printerStatus.connected ? 'bg-green-500' : 'bg-red-500'
+                printerStatus.ready ? 'bg-green-500' : 'bg-yellow-500'
               }`} />
               <span className="font-medium">
-                Impressora {printerStatus.connected ? 'Conectada' : 'Desconectada'}
+                Impressora {printerStatus.ready ? 'Pronta' : 'Indisponível'}
               </span>
             </div>
-            {!printerStatus.connected && (
-              <button
-                onClick={connect}
-                className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
-              >
-                Conectar
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -456,12 +440,7 @@ export default function Dashboard() {
                         <div className="flex gap-2">
                           <button
                             onClick={() => printKitchenTicket(order)}
-                            disabled={!printerStatus.connected}
-                            className={`inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded ${
-                              printerStatus.connected
-                                ? 'text-blue-700 bg-blue-100 hover:bg-blue-200'
-                                : 'text-gray-400 bg-gray-100 cursor-not-allowed'
-                            }`}
+                            className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200"
                             title="Imprimir comanda da cozinha"
                           >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -470,12 +449,7 @@ export default function Dashboard() {
                           </button>
                           <button
                             onClick={() => printCustomerReceipt(order)}
-                            disabled={!printerStatus.connected}
-                            className={`inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded ${
-                              printerStatus.connected
-                                ? 'text-green-700 bg-green-100 hover:bg-green-200'
-                                : 'text-gray-400 bg-gray-100 cursor-not-allowed'
-                            }`}
+                            className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-green-700 bg-green-100 hover:bg-green-200"
                             title="Imprimir recibo do cliente"
                           >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
