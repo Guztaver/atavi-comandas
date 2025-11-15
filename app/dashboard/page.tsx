@@ -26,7 +26,7 @@ export default function Dashboard() {
   useEffect(() => {
     const loadOrders = async () => {
       const allOrders = await BetterAuthStorageService.getOrders();
-      const period = BetterAuthStorageService.getStatisticsPeriod();
+      const period = await BetterAuthStorageService.getStatisticsPeriod();
       setSelectedPeriod(period);
 
       setOrders(allOrders);

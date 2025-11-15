@@ -46,11 +46,11 @@ export const config = {
     port: parseInt(process.env.PORT || '3000', 10),
   },
 
-  // Storage Configuration
+  // Storage Configuration - Now using database only
   storage: {
-    defaultMode: 'hybrid' as 'localStorage' | 'api' | 'hybrid',
-    enableMigration: true,
-    backupOnMigration: true,
+    defaultMode: 'database' as 'localStorage' | 'api' | 'hybrid' | 'database',
+    enableMigration: false, // Migration completed
+    backupOnMigration: false,
   },
 
   // Business Logic Configuration

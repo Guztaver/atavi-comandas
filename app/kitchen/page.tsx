@@ -29,42 +29,61 @@ export default function Kitchen() {
     return () => clearInterval(interval);
   }, []);
 
-  const updateOrderStatus = (orderId: string, newStatus: Order['status']) => {
+  const updateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
     const order = orders.find(o => o.id === orderId);
     if (order) {
-      const updatedOrder = { ...order, status: newStatus, updatedAt: new Date() };
-      BetterAuthStorageService.saveOrder(updatedOrder);
+      try {
+        // Update order via API
+        const response = await fetch(`/api/orders/${orderId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ status: newStatus }),
+        });
 
-      // Notificar sonoramente
-      const audio = new Audio('/notification.mp3');
-      audio.play().catch(() => {}); // Ignorar erro se o arquivo não existir
-
-      // Auto-print kitchen ticket when order starts preparation
-      if (newStatus === 'preparing') {
-        try {
-          printReceipt(
-            <KitchenTicket order={updatedOrder} />,
-            'kitchen-ticket',
-            updatedOrder.id
-          ).catch((error) => {
-            console.error('Failed to print kitchen ticket:', error);
-          });
-        } catch (error) {
-          console.error('Error creating kitchen ticket:', error);
+        if (!response.ok) {
+          throw new Error('Failed to update order status');
         }
-      }
 
-      // Se for para "pronto", tentar notificação visual
-      if (newStatus === 'ready') {
-        if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification('Pedido Pronto!', {
-            body: `Pedido #${orderId.slice(-6)} está pronto para retirada`,
-            icon: '/icons/icon-192.png'
-          });
+        const result = await response.json();
+        const updatedOrder = result.data;
+
+        // Notificar sonoramente
+        const audio = new Audio('/notification.mp3');
+        audio.play().catch(() => {}); // Ignorar erro se o arquivo não existir
+
+        // Auto-print kitchen ticket when order starts preparation
+        if (newStatus === 'preparing') {
+          try {
+            printReceipt(
+              <KitchenTicket order={updatedOrder} />,
+              'kitchen-ticket',
+              updatedOrder.id
+            ).catch((error) => {
+              console.error('Failed to print kitchen ticket:', error);
+            });
+          } catch (error) {
+            console.error('Error creating kitchen ticket:', error);
+          }
         }
-      }
 
-      setOrders(prev => prev.map(o => o.id === orderId ? updatedOrder : o));
+        // Se for para "pronto", tentar notificação visual
+        if (newStatus === 'ready') {
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('Pedido Pronto!', {
+              body: `Pedido #${orderId.slice(-6)} está pronto para retirada`,
+              icon: '/icons/icon-192.png'
+            });
+          }
+        }
+
+        // Update local state
+        setOrders(prev => prev.map(o => o.id === orderId ? updatedOrder : o));
+      } catch (error) {
+        console.error('Error updating order status:', error);
+        // Optionally show error notification to user
+      }
     }
   };
 

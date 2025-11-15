@@ -31,19 +31,38 @@ export default function Delivery() {
     return () => clearInterval(interval);
   }, []);
 
-  const updateOrderStatus = (orderId: string, newStatus: Order['status']) => {
+  const updateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
     const order = orders.find(o => o.id === orderId);
     if (order) {
-      const updatedOrder = { ...order, status: newStatus, updatedAt: new Date() };
-      BetterAuthStorageService.saveOrder(updatedOrder);
+      try {
+        // Update order via API
+        const response = await fetch(`/api/orders/${orderId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ status: newStatus }),
+        });
 
-      // Notificar sonoramente
-      const audio = new Audio('/notification.mp3');
-      audio.play().catch(() => {}); // Ignorar erro se o arquivo não existir
+        if (!response.ok) {
+          throw new Error('Failed to update order status');
+        }
 
-      // Customer receipts are now printed manually from the dashboard only
+        const result = await response.json();
+        const updatedOrder = result.data;
 
-      setOrders(prev => prev.map(o => o.id === orderId ? updatedOrder : o));
+        // Notificar sonoramente
+        const audio = new Audio('/notification.mp3');
+        audio.play().catch(() => {}); // Ignorar erro se o arquivo não existir
+
+        // Customer receipts are now printed manually from the dashboard only
+
+        // Update local state
+        setOrders(prev => prev.map(o => o.id === orderId ? updatedOrder : o));
+      } catch (error) {
+        console.error('Error updating order status:', error);
+        // Optionally show error notification to user
+      }
     }
   };
 

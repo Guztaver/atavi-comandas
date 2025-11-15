@@ -16,8 +16,8 @@ export default function Settings() {
   const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
-    const loadSettings = () => {
-      const savedSettings = BetterAuthStorageService.getSettings();
+    const loadSettings = async () => {
+      const savedSettings = await BetterAuthStorageService.getSettings();
       setSettings(savedSettings);
     };
 
@@ -30,8 +30,8 @@ export default function Settings() {
     setHasChanges(true);
   };
 
-  const handleSave = () => {
-    BetterAuthStorageService.saveSettings(settings);
+  const handleSave = async () => {
+    await BetterAuthStorageService.saveSettings(settings);
     setHasChanges(false);
 
     // Show success feedback
@@ -49,8 +49,8 @@ export default function Settings() {
     }
   };
 
-  const handleCancel = () => {
-    const savedSettings = BetterAuthStorageService.getSettings();
+  const handleCancel = async () => {
+    const savedSettings = await BetterAuthStorageService.getSettings();
     setSettings(savedSettings);
     setHasChanges(false);
   };

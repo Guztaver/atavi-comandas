@@ -35,7 +35,9 @@ export default function MenuManagement() {
 
   const loadMenuItems = async () => {
     try {
+      console.log('Frontend: Loading menu items...');
       const items = await BetterAuthStorageService.getMenuItems();
+      console.log('Frontend: Loaded items:', items);
       setMenuItems(items);
       setError(null);
     } catch (error) {
@@ -103,7 +105,7 @@ export default function MenuManagement() {
     setError(null);
 
     try {
-      const menuItem: MenuItem & {
+      const menuItem: Partial<MenuItem> & {
         costPrice?: number;
         allergens?: string[];
         spicyLevel?: string;
@@ -111,7 +113,7 @@ export default function MenuManagement() {
         glutenFree?: boolean;
         organic?: boolean;
       } = {
-        id: editingItem ? editingItem.id : Date.now().toString(),
+        id: editingItem ? editingItem.id : undefined,
         name: formData.name,
         price: parseFloat(formData.price),
         category: formData.category,
@@ -126,7 +128,9 @@ export default function MenuManagement() {
         organic: formData.organic
       };
 
-      await BetterAuthStorageService.saveMenuItem(menuItem);
+      console.log('Frontend: Submitting menu item:', menuItem);
+      const result = await BetterAuthStorageService.saveMenuItem(menuItem);
+      console.log('Frontend: Save result:', result);
       await loadMenuItems();
       closeForm();
     } catch (error) {
@@ -155,9 +159,9 @@ export default function MenuManagement() {
   };
 
   const duplicateItem = (item: MenuItem) => {
-    const duplicatedItem: MenuItem = {
+    const duplicatedItem: Partial<MenuItem> = {
       ...item,
-      id: Date.now().toString(),
+      id: undefined, // Let API generate ID
       name: `${item.name} (Cópia)`
     };
     BetterAuthStorageService.saveMenuItem(duplicatedItem);
@@ -242,10 +246,10 @@ export default function MenuManagement() {
         const importedItems = JSON.parse(event.target?.result as string);
         if (Array.isArray(importedItems)) {
           if (confirm(`Importar ${importedItems.length} itens? Isso irá substituir o cardápio atual.`)) {
-            importedItems.forEach(item => {
+            importedItems.forEach((item: any) => {
               BetterAuthStorageService.saveMenuItem({
                 ...item,
-                id: Date.now().toString() + Math.random()
+                id: undefined // Let API generate ID
               });
             });
             loadMenuItems();

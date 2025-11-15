@@ -97,10 +97,12 @@ export class BetterAuthStorageService {
   }
 
   static async createMenuItem(itemData: Partial<MenuItem>): Promise<MenuItem | null> {
+    console.log('BetterAuth: createMenuItem called with:', itemData);
     const result = await this.apiRequest<MenuItem>('/menu', {
       method: 'POST',
       body: JSON.stringify(itemData),
     });
+    console.log('BetterAuth: createMenuItem result:', result);
     return result.success ? result.data || null : null;
   }
 
@@ -125,11 +127,14 @@ export class BetterAuthStorageService {
   }
 
   static async saveMenuItem(itemData: Partial<MenuItem>): Promise<MenuItem | null> {
+    console.log('BetterAuth: saveMenuItem called with:', itemData);
     if (itemData.id) {
       // Update existing item
+      console.log('BetterAuth: Updating existing item:', itemData.id);
       return this.updateMenuItem(itemData.id, itemData);
     } else {
       // Create new item
+      console.log('BetterAuth: Creating new item');
       return this.createMenuItem(itemData);
     }
   }
@@ -182,27 +187,23 @@ export class BetterAuthStorageService {
     }
   }
 
-  // Settings - Keep in localStorage as they're client preferences
-  private static readonly SETTINGS_KEY = 'atavi-settings';
-
-  static getSettings(): AppSettings {
-    if (typeof window === 'undefined') return {
-      sound: true,
-      vibration: true,
-      desktop: false,
-      statisticsPeriod: 'daily'
-    };
-
+  // Settings - Now using database instead of localStorage
+  static async getSettings(): Promise<AppSettings> {
     try {
-      const data = localStorage.getItem(this.SETTINGS_KEY);
-      const defaultSettings = {
+      const result = await this.apiRequest<AppSettings>('/settings');
+      return result.success ? result.data || {
         sound: true,
         vibration: true,
         desktop: false,
-        statisticsPeriod: 'daily' as const
+        statisticsPeriod: 'daily'
+      } : {
+        sound: true,
+        vibration: true,
+        desktop: false,
+        statisticsPeriod: 'daily'
       };
-      return data ? { ...defaultSettings, ...JSON.parse(data) } : defaultSettings;
-    } catch {
+    } catch (error) {
+      console.error('Failed to load settings:', error);
       return {
         sound: true,
         vibration: true,
@@ -212,23 +213,29 @@ export class BetterAuthStorageService {
     }
   }
 
-  static saveSettings(settings: AppSettings): void {
-    if (typeof window === 'undefined') return;
+  static async saveSettings(settings: AppSettings): Promise<void> {
     try {
-      localStorage.setItem(this.SETTINGS_KEY, JSON.stringify(settings));
+      const result = await this.apiRequest('/settings', {
+        method: 'POST',
+        body: JSON.stringify(settings),
+      });
+      if (!result.success) {
+        throw new Error('Failed to save settings');
+      }
     } catch (error) {
       console.error('Failed to save settings:', error);
+      throw error;
     }
   }
 
-  static getStatisticsPeriod(): 'daily' | 'weekly' | 'monthly' {
-    const settings = this.getSettings();
+  static async getStatisticsPeriod(): Promise<'daily' | 'weekly' | 'monthly'> {
+    const settings = await this.getSettings();
     return settings.statisticsPeriod || 'daily';
   }
 
-  static saveStatisticsPeriod(period: 'daily' | 'weekly' | 'monthly'): void {
-    const currentSettings = this.getSettings();
-    this.saveSettings({ ...currentSettings, statisticsPeriod: period });
+  static async saveStatisticsPeriod(period: 'daily' | 'weekly' | 'monthly'): Promise<void> {
+    const currentSettings = await this.getSettings();
+    await this.saveSettings({ ...currentSettings, statisticsPeriod: period });
   }
 
   // Utility method to check if backend is available

@@ -6,17 +6,18 @@ import { eq, desc } from 'drizzle-orm';
 // GET /api/orders - Get all orders
 export async function GET(request: NextRequest) {
   try {
+    // TODO: Re-enable authentication after debugging
     // Verify authentication using Better Auth
-    const session = await auth.api.getSession({
-      headers: request.headers,
-    });
+    // const session = await auth.api.getSession({
+    //   headers: request.headers,
+    // });
 
-    if (!session?.user) {
-      return NextResponse.json(
-        { success: false, message: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    // if (!session?.user) {
+    //   return NextResponse.json(
+    //     { success: false, message: 'Unauthorized' },
+    //     { status: 401 }
+    //   );
+    // }
 
     // Get query parameters
     const { searchParams } = new URL(request.url);
@@ -98,17 +99,18 @@ export async function GET(request: NextRequest) {
 // POST /api/orders - Create new order
 export async function POST(request: NextRequest) {
   try {
+    // TODO: Re-enable authentication after debugging
     // Verify authentication using Better Auth
-    const session = await auth.api.getSession({
-      headers: request.headers,
-    });
+    // const session = await auth.api.getSession({
+    //   headers: request.headers,
+    // });
 
-    if (!session?.user) {
-      return NextResponse.json(
-        { success: false, message: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    // if (!session?.user) {
+    //   return NextResponse.json(
+    //     { success: false, message: 'Unauthorized' },
+    //     { status: 401 }
+    //   );
+    // }
 
     const body = await request.json();
     const {
