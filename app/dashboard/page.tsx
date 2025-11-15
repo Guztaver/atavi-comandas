@@ -146,15 +146,25 @@ export default function Dashboard() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm">
             <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${
-              printerStatus.ready
+              printerStatus.printing
+                ? 'bg-blue-100 text-blue-800 border border-blue-200 animate-pulse'
+                : printerStatus.ready
                 ? 'bg-green-100 text-green-800 border border-green-200'
-                : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                : 'bg-red-100 text-red-800 border border-red-200'
             }`}>
               <div className={`w-2 h-2 rounded-full ${
-                printerStatus.ready ? 'bg-green-500' : 'bg-yellow-500'
+                printerStatus.printing
+                  ? 'bg-blue-500 animate-ping'
+                  : printerStatus.ready
+                  ? 'bg-green-500'
+                  : 'bg-red-500'
               }`} />
               <span className="font-medium">
-                Impressora {printerStatus.ready ? 'Pronta' : 'Indisponível'}
+                Impressora {printerStatus.printing
+                  ? 'Imprimindo...'
+                  : printerStatus.ready
+                  ? 'Pronta'
+                  : 'Erro'}
               </span>
             </div>
           </div>

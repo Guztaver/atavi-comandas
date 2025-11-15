@@ -41,20 +41,7 @@ export default function Delivery() {
       const audio = new Audio('/notification.mp3');
       audio.play().catch(() => {}); // Ignorar erro se o arquivo não existir
 
-      // Auto-print customer receipt when order is ready or delivered
-      if (newStatus === 'ready' || newStatus === 'delivered') {
-        try {
-          printReceipt(
-            <CustomerReceipt order={updatedOrder} />,
-            'customer-receipt',
-            updatedOrder.id
-          ).catch((error) => {
-            console.error('Failed to print customer receipt:', error);
-          });
-        } catch (error) {
-          console.error('Error creating customer receipt:', error);
-        }
-      }
+      // Customer receipts are now printed manually from the dashboard only
 
       setOrders(prev => prev.map(o => o.id === orderId ? updatedOrder : o));
     }

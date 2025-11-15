@@ -7,9 +7,11 @@ class PrinterService {
   private status: PrinterStatus = { ready: true };
   private queue: PrintQueue = { jobs: [], isProcessing: false };
   private statusChangeCallbacks: ((status: PrinterStatus) => void)[] = [];
+  private printedJobs: Map<string, boolean> = new Map();
 
   constructor() {
     this.initializeFromStorage();
+    this.loadPrintedJobs();
   }
 
   private initializeFromStorage() {
@@ -49,9 +51,52 @@ class PrinterService {
     return { ...this.status };
   }
 
+  private isAlreadyPrinted(type: 'kitchen-ticket' | 'customer-receipt', orderId: string): boolean {
+    const key = `${type}_${orderId}`;
+    return this.printedJobs.has(key);
+  }
+
+  private markAsPrinted(type: 'kitchen-ticket' | 'customer-receipt', orderId: string): void {
+    const key = `${type}_${orderId}`;
+    this.printedJobs.set(key, true);
+
+    // Persist to localStorage for session persistence
+    if (typeof window !== 'undefined') {
+      const existing = localStorage.getItem('printed-jobs');
+      const printedJobs = existing ? JSON.parse(existing) : {};
+      printedJobs[key] = Date.now();
+      localStorage.setItem('printed-jobs', JSON.stringify(printedJobs));
+    }
+  }
+
+  private loadPrintedJobs(): void {
+    if (typeof window !== 'undefined') {
+      try {
+        const existing = localStorage.getItem('printed-jobs');
+        if (existing) {
+          const printedJobs = JSON.parse(existing);
+          Object.entries(printedJobs).forEach(([key, timestamp]) => {
+            // Clear jobs older than 24 hours
+            if (Date.now() - (timestamp as number) < 24 * 60 * 60 * 1000) {
+              this.printedJobs.set(key, true);
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load printed jobs:', error);
+      }
+    }
+  }
+
   async printReceipt(receiptElement: React.ReactElement, type: 'kitchen-ticket' | 'customer-receipt', orderId: string): Promise<string> {
     if (!this.config) {
       throw new Error('Printer configuration not set');
+    }
+
+    // Check if already printed (for auto-print scenarios)
+    if (this.isAlreadyPrinted(type, orderId)) {
+      console.log(`Print job skipped: ${type} for order ${orderId} already printed`);
+      return `skipped_${type}_${orderId}`;
     }
 
     try {
@@ -66,10 +111,12 @@ class PrinterService {
       };
 
       this.queue.jobs.push(printJob);
+      this.updateStatus({ printing: true, ready: false });
       this.processQueue(receiptElement);
 
       return printJob.id;
     } catch (error) {
+      this.updateStatus({ printing: false, ready: true, error: error instanceof Error ? error.message : 'Print failed' });
       throw new Error(`Failed to create print job: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -91,9 +138,12 @@ class PrinterService {
 
       try {
         job.status = 'printing';
+        this.updateStatus({ printing: true, ready: false });
 
         if (receiptElement) {
           await this.printWithNativeBrowser(receiptElement);
+          // Mark as printed only after successful printing
+          this.markAsPrinted(job.type, job.orderId);
         }
 
         job.status = 'completed';
@@ -102,6 +152,8 @@ class PrinterService {
         job.status = 'failed';
         job.retryCount++;
         this.updateStatus({
+          printing: false,
+          ready: true,
           error: error instanceof Error ? error.message : 'Print failed',
           lastError: error instanceof Error ? error.message : 'Print failed'
         });
@@ -114,6 +166,8 @@ class PrinterService {
       }
     }
 
+    // Reset status when queue is empty
+    this.updateStatus({ printing: false, ready: true });
     this.queue.isProcessing = false;
   }
 
@@ -141,7 +195,7 @@ class PrinterService {
         document.body.appendChild(printContainer);
 
         // Use native browser print
-        const printWindow = window.open('', '_blank');
+        const printWindow = window.open('', '_blank', 'width=400,height=600');
         if (printWindow) {
           printWindow.document.write(`
             <!DOCTYPE html>
@@ -164,7 +218,15 @@ class PrinterService {
                   .double-size { font-size: 1.5em; }
                   .line { border-bottom: 1px solid black; margin: 5px 0; }
                   .section { margin: 10px 0; }
+                  @media print {
+                    body { margin: 0; padding: 5px; }
+                  }
                 </style>
+                <script>
+                  window.onafterprint = function() {
+                    window.close();
+                  }
+                </script>
               </head>
               <body>
                 ${htmlContent}
@@ -175,27 +237,68 @@ class PrinterService {
           printWindow.document.close();
           printWindow.focus();
 
+          let resolved = false;
+
+          // Multiple approaches to ensure the window closes
+          const cleanup = () => {
+            if (!resolved) {
+              resolved = true;
+              if (document.body.contains(printContainer)) {
+                document.body.removeChild(printContainer);
+              }
+              resolve();
+            }
+          };
+
+          // Method 1: Use onafterprint event
+          printWindow.onafterprint = () => {
+            setTimeout(() => {
+              printWindow.close();
+              cleanup();
+            }, 100);
+          };
+
+          // Method 2: Fallback with timeout
           printWindow.onload = () => {
             setTimeout(() => {
               printWindow.print();
-              printWindow.close();
-              document.body.removeChild(printContainer);
-              resolve();
+              // Give user time to see print dialog, then close
+              setTimeout(() => {
+                printWindow.close();
+                cleanup();
+              }, 1000);
             }, 500);
           };
 
-          printWindow.onafterprint = () => {
-            printWindow.close();
+          // Method 3: Safety net - force close after 10 seconds
+          setTimeout(() => {
+            if (!resolved) {
+              printWindow.close();
+              cleanup();
+            }
+          }, 10000);
+
+        } else {
+          // Fallback if popup blocked - use window.print()
+          const cleanup = () => {
             if (document.body.contains(printContainer)) {
               document.body.removeChild(printContainer);
             }
             resolve();
           };
-        } else {
-          // Fallback if popup blocked
+
+          // Handle print completion
+          const mediaQueryList = window.matchMedia('print');
+          mediaQueryList.addListener((mql) => {
+            if (!mql.matches) {
+              cleanup();
+            }
+          });
+
           window.print();
-          document.body.removeChild(printContainer);
-          resolve();
+
+          // Fallback timeout
+          setTimeout(cleanup, 2000);
         }
       } catch (error) {
         reject(error);

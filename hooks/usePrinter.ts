@@ -16,13 +16,15 @@ export function usePrinter() {
       if (newStatus.error) {
         setError(newStatus.error);
       }
+      // Update loading state based on printing status
+      setIsLoading(newStatus.printing || false);
     };
 
     printerService.onStatusChange(handleStatusChange);
 
     const interval = setInterval(() => {
       setQueue(printerService.getQueueStatus());
-    }, 500);
+    }, 1000); // Reduced frequency for better performance
 
     return () => {
       clearInterval(interval);
@@ -35,16 +37,15 @@ export function usePrinter() {
     orderId: string
   ) => {
     setError(null);
-    setIsLoading(true);
+    // Don't set loading here - let the status changes handle it
     try {
       const jobId = await printerService.printReceipt(receiptElement, type, orderId);
       return jobId;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to print receipt');
       throw err;
-    } finally {
-      setIsLoading(false);
     }
+    // Don't reset loading - status changes will handle the state
   }, []);
 
   const setConfig = useCallback((config: PrinterConfig) => {

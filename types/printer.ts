@@ -6,6 +6,7 @@ export interface PrinterConfig {
 
 export interface PrinterStatus {
   ready: boolean;
+  printing?: boolean;
   error?: string;
   lastError?: string;
 }
